@@ -1,4 +1,4 @@
-name: Track latest Hibernate ORM 5.x
+name: Latest ORM 5.x
 
 on:
   # Trigger the workflow on push or pull request,
