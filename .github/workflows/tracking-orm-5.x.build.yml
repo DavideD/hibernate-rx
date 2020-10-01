@@ -17,7 +17,7 @@ on:
 jobs:
   # The examples test the Hibernate ORM Gradle plugin. We use it for bytecode enhancements.
   run_examples:
-    name: Run examples on ${{ matrix.db }} with ORM ${{ matrix.orm-version }}
+    name: Run examples on ${{ matrix.db }} with latest ORM in ${{ matrix.orm-version }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -68,7 +68,7 @@ jobs:
         run: ./gradlew :example:runAllExamplesOn${{ matrix.db }} -PhibernateOrmVersion='${{ matrix.orm-version }}' -PskipOrmVersionParsing
 
   test_dbs:
-    name: Test with ${{  matrix.db }} and ORM ${{ matrix.orm-version }}
+    name: Test with ${{  matrix.db }} and latest ORM in ${{ matrix.orm-version }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
