@@ -27,8 +27,10 @@ buildscript {
     repositories {
 //        mavenLocal()
         mavenCentral()
-        // Used only for testing with the latest Hibernate ORM snapshots.
-        maven { url 'https://repository.jboss.org/nexus/content/repositories/snapshots' }
+        if ( project.hasProperty('enableJbossSnapshotRep') ) {
+            // Used only for testing with the latest Hibernate ORM snapshots.
+            maven { url 'https://repository.jboss.org/nexus/content/repositories/snapshots' }
+        }
     }
     dependencies {
         classpath "org.hibernate:hibernate-gradle-plugin:${hibernateOrmVersion}"
