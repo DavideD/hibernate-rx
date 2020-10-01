@@ -12,8 +12,9 @@ jobs:
   run_examples:
     name: Run examples on ${{ matrix.db }}
     runs-on: ubuntu-latest
-    matrix:
-      db: [ 'MySQL', 'PostgreSQL' ]
+    strategy:
+      matrix:
+        db: [ 'MySQL', 'PostgreSQL' ]
     services:
        # Label used to access the service container
       mysql:
@@ -59,6 +60,9 @@ jobs:
   test_dbs:
     name: Test with ${{ matrix.db }}
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        db: [ 'MySQL', 'PostgreSQL', 'DB2' ]
     steps:
     - uses: actions/checkout@v2
     - name: Set up JDK 1.8
