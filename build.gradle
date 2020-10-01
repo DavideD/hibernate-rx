@@ -82,7 +82,7 @@ subprojects {
         mavenCentral()
 
         // Example: ./gradlew build -PenableJbossSnapshotRep
-        if ( project.hasProperty('enableJbossSnapshotRep') ) {
+        if ( project.hasProperty('enableJBossSnapshotRep') ) {
             // Used only for testing with the latest Hibernate ORM snapshots.
             maven { url 'https://repository.jboss.org/nexus/content/repositories/snapshots' }
         }
