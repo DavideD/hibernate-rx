@@ -80,6 +80,8 @@ subprojects {
         // jcenter()
         // maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }
         mavenCentral()
+
+        // Example: ./gradlew build -PenableJbossSnapshotRep
         if ( project.hasProperty('enableJbossSnapshotRep') ) {
             // Used only for testing with the latest Hibernate ORM snapshots.
             maven { url 'https://repository.jboss.org/nexus/content/repositories/snapshots' }
