@@ -68,7 +68,7 @@ public class VertxEventLoopThreadTest extends BaseReactiveTest {
 	}
 
 	private static boolean isVertxEventLoopThread(Thread thread) {
-		return thread != null && thread.getName().startsWith( "vert.x-eventloop-thread-" );
+		return thread instanceof VertxThread;
 	}
 
 	@Entity
