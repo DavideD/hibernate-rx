@@ -8,6 +8,7 @@ package org.hibernate.reactive;
 import io.smallrye.mutiny.Uni;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.hibernate.boot.registry.StandardServiceRegistry;
@@ -24,6 +25,7 @@ import org.hibernate.reactive.pool.ReactiveConnectionPool;
 import org.hibernate.reactive.provider.ReactiveServiceRegistryBuilder;
 import org.hibernate.reactive.provider.service.ReactiveGenerationTarget;
 import org.hibernate.reactive.stage.Stage;
+import org.hibernate.reactive.vertx.VertxInstance;
 import org.hibernate.tool.schema.spi.SchemaManagementTool;
 import org.junit.After;
 import org.junit.Before;
@@ -39,6 +41,9 @@ public abstract class BaseReactiveTest {
 
 	@Rule
 	public Timeout rule = Timeout.seconds( 5 * 60 );
+
+	@Rule
+	public RunTestOnContext vertxContextRule = new RunTestOnContext();
 
 	private AutoCloseable session;
 	private ReactiveConnection connection;
@@ -101,6 +106,7 @@ public abstract class BaseReactiveTest {
 	public void before() {
 		Configuration configuration = constructConfiguration();
 		StandardServiceRegistryBuilder builder = new ReactiveServiceRegistryBuilder()
+				.addService( VertxInstance.class, (VertxInstance) () -> vertxContextRule.vertx() )
 				.applySettings( configuration.getProperties() );
 		addServices( builder );
 		StandardServiceRegistry registry = builder.build();
