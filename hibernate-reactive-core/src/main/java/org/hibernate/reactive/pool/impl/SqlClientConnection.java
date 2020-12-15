@@ -189,6 +189,7 @@ public class SqlClientConnection implements ReactiveConnection {
 	}
 
 	private void feedback(String sql) {
+		System.out.println("Prepared query: " + sql);
 		Objects.requireNonNull(sql, "SQL query cannot be null");
 		// DDL already gets formatted by the client, so don't reformat it
 		FormatStyle formatStyle =

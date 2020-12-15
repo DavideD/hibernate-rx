@@ -6,11 +6,16 @@
 package org.hibernate.reactive;
 
 import io.smallrye.mutiny.Uni;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+
+import org.hibernate.SessionFactory;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.Configuration;
@@ -116,7 +121,7 @@ public abstract class BaseReactiveTest {
 	}
 
 	@Before
-	public void before() {
+	public void before(TestContext context) {
 		Configuration configuration = constructConfiguration();
 		StandardServiceRegistryBuilder builder = new ReactiveServiceRegistryBuilder()
 				.addService( VertxInstance.class, (VertxInstance) () -> vertxContextRule.vertx() )
@@ -124,8 +129,20 @@ public abstract class BaseReactiveTest {
 		addServices( builder );
 		StandardServiceRegistry registry = builder.build();
 		configureServices( registry );
-		sessionFactory = configuration.buildSessionFactory( registry );
-		poolProvider = registry.getService( ReactiveConnectionPool.class );
+
+		Handler<Promise<org.hibernate.SessionFactory>> promise = p -> {
+			SessionFactory created = configuration.buildSessionFactory( registry );
+			p.complete( created );
+		};
+
+		final Async async = context.async();
+		Handler<AsyncResult<org.hibernate.SessionFactory>> result = r -> {
+			sessionFactory = r.result();
+			poolProvider = registry.getService( ReactiveConnectionPool.class );
+			async.complete();
+		};
+
+		vertxContextRule.vertx().executeBlocking( promise, result );
 	}
 
 	protected void addServices(StandardServiceRegistryBuilder builder) {}

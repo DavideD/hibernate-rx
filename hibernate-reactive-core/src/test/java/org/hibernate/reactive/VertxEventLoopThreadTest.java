@@ -12,6 +12,7 @@ import org.hibernate.cfg.Configuration;
 
 import org.junit.Test;
 
+import io.vertx.core.impl.VertxThread;
 import io.vertx.ext.unit.TestContext;
 import static org.assertj.core.api.Assertions.assertThat;
 
