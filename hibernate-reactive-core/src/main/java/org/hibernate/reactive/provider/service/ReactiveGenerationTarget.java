@@ -5,6 +5,10 @@
  */
 package org.hibernate.reactive.provider.service;
 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.CompletionStage;
+
 import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.reactive.pool.ReactiveConnection;
@@ -14,9 +18,6 @@ import org.hibernate.service.ServiceRegistry;
 import org.hibernate.tool.schema.internal.exec.GenerationTarget;
 import org.hibernate.tool.schema.internal.exec.GenerationTargetToDatabase;
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.concurrent.CompletionStage;
 
 
 /**
@@ -50,17 +51,18 @@ public class ReactiveGenerationTarget implements GenerationTarget {
 		// (hack specifically to avoid multiple
 		// inserts into a sequence emulation table)
 		if ( statements.add( command ) ) {
-			commands = commands.thenCompose(
-					connection -> connection.execute( command )
-							.handle( (r, e) -> {
-								System.out.println("Executed command: " + command);
-								if ( e != null ) {
-									log.warnf("HRX000021: DDL command failed [%s]", e.getMessage() );
-								}
-								return null;
-							} )
-							.thenApply( v -> connection )
-			);
+			vertxSupplier.getVertx().getOrCreateContext().runOnContext( v1 -> {
+				commands = commands.thenCompose(
+						connection -> connection.execute( command )
+								.handle( (r, e) -> {
+									if ( e != null ) {
+										log.warnf( "HRX000021: DDL command failed [%s]", e.getMessage() );
+									}
+									return null;
+								} )
+								.thenApply( v2 -> connection )
+				);
+			} );
 		}
 	}
 

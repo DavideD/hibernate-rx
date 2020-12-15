@@ -12,7 +12,7 @@ import org.hibernate.cfg.Configuration;
 
 import org.junit.Test;
 
-import io.vertx.core.impl.VertxThread;
+import io.vertx.core.Context;
 import io.vertx.ext.unit.TestContext;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -41,7 +41,7 @@ public class VertxEventLoopThreadTest extends BaseReactiveTest {
 	@Test
 	public void testThreadsWithCompletionStage(TestContext context) {
 		final Thread currentThread = Thread.currentThread();
-		assertThat( isVertxEventLoopThread( currentThread ) )
+		assertThat( Context.isOnEventLoopThread() )
 				.as( "This is not a Vert.x event loop thread " + currentThread )
 				.isTrue();
 
@@ -56,7 +56,7 @@ public class VertxEventLoopThreadTest extends BaseReactiveTest {
 	@Test
 	public void testThreadsWithMutiny(TestContext context) {
 		Thread currentThread = Thread.currentThread();
-		assertThat( isVertxEventLoopThread( currentThread ) )
+		assertThat( Context.isOnEventLoopThread() )
 				.as( "This is not a Vert.x event loop thread " + currentThread )
 				.isTrue();
 
@@ -66,10 +66,6 @@ public class VertxEventLoopThreadTest extends BaseReactiveTest {
 					Thread insideThread = Thread.currentThread();
 					context.assertEquals( currentThread, insideThread );
 				} ) );
-	}
-
-	private static boolean isVertxEventLoopThread(Thread thread) {
-		return thread instanceof VertxThread;
 	}
 
 	@Entity
