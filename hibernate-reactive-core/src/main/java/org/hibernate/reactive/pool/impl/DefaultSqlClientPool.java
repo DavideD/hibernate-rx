@@ -84,7 +84,7 @@ public class DefaultSqlClientPool extends SqlClientPool
 	}
 
 	@Override
-	protected Pool getPool() {
+	public Pool getPool() {
 		return pool;
 	}
 

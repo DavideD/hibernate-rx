@@ -32,7 +32,7 @@ public final class ExternalSqlClientPool extends SqlClientPool {
 	}
 
 	@Override
-	protected Pool getPool() {
+	public Pool getPool() {
 		return pool;
 	}
 

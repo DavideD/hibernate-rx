@@ -5,14 +5,16 @@
  */
 package org.hibernate.reactive.provider.service;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
 import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
-import org.hibernate.reactive.pool.ReactiveConnection;
 import org.hibernate.reactive.pool.ReactiveConnectionPool;
+import org.hibernate.reactive.util.impl.CompletionStages;
 import org.hibernate.reactive.vertx.VertxInstance;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.tool.schema.internal.exec.GenerationTarget;
@@ -29,10 +31,14 @@ import org.hibernate.tool.schema.internal.exec.GenerationTargetToDatabase;
 public class ReactiveGenerationTarget implements GenerationTarget {
 	private final ServiceRegistry registry;
 	private VertxInstance vertxSupplier;
-	private CompletionStage<ReactiveConnection> commands;
+	private ReactiveConnectionPool service;
 	private Set<String> statements;
+	private volatile boolean done = false;
+	private volatile boolean started = false;
+	private List<String> commands = new ArrayList<>();
 
 	CoreMessageLogger log = CoreLogging.messageLogger( GenerationTargetToDatabase.class );
+
 
 	public ReactiveGenerationTarget(ServiceRegistry registry) {
 		this.registry = registry;
@@ -40,7 +46,7 @@ public class ReactiveGenerationTarget implements GenerationTarget {
 
 	@Override
 	public void prepare() {
-		commands = registry.getService( ReactiveConnectionPool.class ).getConnection();
+		service = registry.getService( ReactiveConnectionPool.class );
 		vertxSupplier = registry.getService( VertxInstance.class );
 		statements = new HashSet<>();
 	}
@@ -51,18 +57,19 @@ public class ReactiveGenerationTarget implements GenerationTarget {
 		// (hack specifically to avoid multiple
 		// inserts into a sequence emulation table)
 		if ( statements.add( command ) ) {
-			vertxSupplier.getVertx().getOrCreateContext().runOnContext( v1 -> {
-				commands = commands.thenCompose(
-						connection -> connection.execute( command )
-								.handle( (r, e) -> {
-									if ( e != null ) {
-										log.warnf( "HRX000021: DDL command failed [%s]", e.getMessage() );
-									}
-									return null;
-								} )
-								.thenApply( v2 -> connection )
-				);
-			} );
+				commands.add( command );
+//				Handler<Void> handler = v1 -> {
+//					service.getConnection().thenAccept( reactiveConnection -> {
+//												 reactiveConnection.execute( command )
+//												 .handle( (r, e) -> {
+//													 if ( e != null ) {
+//														 log.warnf( "HRX000021: DDL command failed [%s]", e.getMessage() );
+//													 }
+//													 return null;
+//												 } );
+//									 });
+//				}
+//				vertxSupplier.getVertx().getOrCreateContext().runOnContext( handler );
 		}
 	}
 
@@ -70,9 +77,34 @@ public class ReactiveGenerationTarget implements GenerationTarget {
 	public void release() {
 		statements = null;
 		if ( commands != null ) {
-			commands.whenComplete( (c, e) -> c.close() )
-					.toCompletableFuture()
-					.join();
+			vertxSupplier.getVertx().getOrCreateContext().runOnContext( v1 -> {
+				service.getConnection().thenAccept( reactiveConnection ->  {
+					CompletionStage<Void> result = CompletionStages.voidFuture();
+					for ( String command : commands ) {
+						result = result.thenCompose(  v -> reactiveConnection.execute( command )
+								.handle( (r, e) -> {
+									if ( e != null ) {
+										log.warnf( "HRX000021: DDL command failed [%s]", e.getMessage() );
+									}
+									return null;
+								} )
+						);
+					}
+					result
+						.whenComplete( (v, e) -> reactiveConnection.close() )
+						.whenComplete( (v, e) -> done = true );
+
+				} );
+			} );
+
+			while( !done ) {
+				try {
+					Thread.sleep( 10 );
+				}
+				catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
 		}
 	}
 }

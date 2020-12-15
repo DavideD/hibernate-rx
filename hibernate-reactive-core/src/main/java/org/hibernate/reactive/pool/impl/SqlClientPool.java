@@ -28,7 +28,7 @@ public abstract class SqlClientPool implements ReactiveConnectionPool {
 	/**
 	 * @return the underlying Vert.x {@link Pool}
 	 */
-	protected abstract Pool getPool();
+	public abstract Pool getPool();
 
 	/**
 	 * @return a Hibernate {@link SqlStatementLogger} for logging SQL
