@@ -114,7 +114,7 @@ public abstract class BaseReactiveTest {
 			doneTablespace = true;
 		}
 		//Use JAVA_TOOL_OPTIONS='-Dhibernate.show_sql=true'
-		configuration.setProperty( Settings.SHOW_SQL, System.getProperty(Settings.SHOW_SQL, "false") );
+		configuration.setProperty( Settings.SHOW_SQL, System.getProperty(Settings.SHOW_SQL, "true") );
 		configuration.setProperty( Settings.FORMAT_SQL, System.getProperty(Settings.FORMAT_SQL, "false") );
 		configuration.setProperty( Settings.HIGHLIGHT_SQL, System.getProperty(Settings.HIGHLIGHT_SQL, "true") );
 		return configuration;
@@ -131,6 +131,7 @@ public abstract class BaseReactiveTest {
 		configureServices( registry );
 
 		Handler<Promise<org.hibernate.SessionFactory>> promise = p -> {
+			System.out.println("Create a new SessionFactory");
 			SessionFactory created = configuration.buildSessionFactory( registry );
 			p.complete( created );
 		};
@@ -188,7 +189,6 @@ public abstract class BaseReactiveTest {
 				connection = null;
 			}
 		}
-
 		sessionFactory.close();
 	}
 

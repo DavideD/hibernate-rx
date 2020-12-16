@@ -9,6 +9,7 @@ import io.vertx.ext.unit.TestContext;
 import org.hibernate.annotations.Type;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.reactive.BaseReactiveTest;
+
 import org.junit.After;
 import org.junit.Test;
 
