@@ -137,7 +137,7 @@ bintray {
         publish = true
 
         licenses = ['LGPL-2.1']
-        vcsUrl = 'https://github.com/hibernate/hibernate-reactive'
+        vcsUrl = 'https://github.com/DavideD/hibernate-reactive'
 
         version {
             name = project.version
