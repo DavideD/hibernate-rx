@@ -128,15 +128,29 @@ bintray {
     publications = ['publishedArtifacts']
 
     pkg {
+        // It will use the bintrayUser if userOrg is not present.
+        // It's fine because we don't want to release the Vert.x 4 branch
+        // on the official hibernate repository for now
+        // userOrg = 'hibernate'
         repo = 'artifacts'
         name = 'hibernate-reactive'
-
         publish = true
+
+        licenses = ['LGPL-2.1']
+        vcsUrl = 'https://github.com/hibernate/hibernate-reactive'
 
         version {
             name = project.version
             released = new Date()
             vcsTag = project.version
+            gpg {
+                sign = true
+            }
+//            mavenCentralSync {
+//                sync = true
+//                user = project.sonatypeOssrhUser
+//                password = project.sonatypeOssrhPassword
+//            }
         }
     }
 }
