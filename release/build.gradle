@@ -136,7 +136,7 @@ task ciRelease {
         executeGitCommand('switch', project.gitBranch)
 
         logger.lifecycle("Checking that all commits are pushed...")
-        String diffWithUpstream = executeGitCommand('diff', '@{u}')
+        String diffWithUpstream = executeGitCommand('diff', "${project.gitRemote}/${project.gitBranch}")
         if ( !diffWithUpstream.isEmpty() ) {
             throw new GradleException(
                     "Cannot release because there are commits on the branch to release that haven't been pushed yet."
