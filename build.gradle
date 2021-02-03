@@ -179,7 +179,7 @@ private static String readVersionFromProperties(File file) {
 
 class Version {
 
-    private static final Pattern RELEASE_VERSION_PATTERN = ~/^(\d+)\.(\d+)\.(\d+)\.((?<=\.0\.)(?:Alpha\d+|Beta\d+|CR\d+)|Final)$/
+    private static final Pattern RELEASE_VERSION_PATTERN = ~/^(\d+)\.(\d+)\.(\d+)\.((?<=\.0\.)(?:Alpha\d+\.Vertx4|Beta\d+\.Vertx4|CR\d+\.Vertx4)|Final(\.Vertx4)?)$/
 
     private static final Pattern DEVELOPMENT_VERSION_PATTERN = ~/^(\d+)\.(\d+)\.(\d+)-SNAPSHOT$/
 
