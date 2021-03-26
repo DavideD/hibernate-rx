@@ -144,6 +144,39 @@ public class DefaultSqlClientPool extends SqlClientPool
 		return parse( url );
 	}
 
+	private enum VertxDriver {
+		DB2( "io.vertx.db2client.spi.DB2Driver", "db2" ),
+		MYSQL( "io.vertx.mysqlclient.spi.MySQLDriver", "mysql", "mariadb" ),
+		POSTGRES( "io.vertx.pgclient.spi.PgDriver", "postgres", "postgre", "postgresql", "cockroachdb" ),
+		MSSQL( "io.vertx.mssqlclient.spi.MSSQLDriver", "sqlserver" );
+
+		private final String driverName;
+		private final String[] schemas;
+
+		VertxDriver(String driverName, String... schemas) {
+			this.driverName = driverName;
+			this.schemas = schemas;
+		}
+
+		public boolean matches(String schema) {
+			for ( String alias : schemas ) {
+				if ( alias.equalsIgnoreCase( schema ) ) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		public static VertxDriver findByName(String driverName) {
+			for ( VertxDriver driver : values() ) {
+				if ( driver.driverName.equalsIgnoreCase( driverName ) ) {
+					return driver;
+				}
+			}
+			return null;
+		}
+	}
+
 	/**
 	 * When there are multiple candidate drivers in the classpath,
 	 * {@link Pool#pool} throws a {@link ServiceConfigurationError},
@@ -160,30 +193,21 @@ public class DefaultSqlClientPool extends SqlClientPool
 		for ( Driver d : ServiceLoader.load( Driver.class ) ) {
 			String driverName = d.getClass().getCanonicalName();
 			messageLogger( DefaultSqlClientPool.class ).infof( "HRX000013: Detected driver [%s]", driverName );
-			switch (driverName) {
-				case "io.vertx.db2client.spi.DB2Driver":
-					if ( "db2".equalsIgnoreCase( scheme ) ) {
-						return d;
-					}
-				case "io.vertx.mysqlclient.spi.MySQLDriver":
-					if ( "mysql".equalsIgnoreCase( scheme ) ) {
-						return d;
-					}
-					if ( "mariadb".equalsIgnoreCase( scheme ) ) {
-						return d;
-					}
-				case "io.vertx.pgclient.spi.PgDriver":
-					if ( "postgre".equalsIgnoreCase( scheme ) ||
-							"postgres".equalsIgnoreCase( scheme ) ||
-							"postgresql".equalsIgnoreCase( scheme ) ) {
-						return d;
-					}
-					if ( "cockroachdb".equalsIgnoreCase( scheme ) ) {
-						return d;
-					}
+			VertxDriver driver = VertxDriver.findByName( driverName );
+			if ( driver.matches( scheme ) ) {
+				return d;
 			}
 		}
 		throw new ConfigurationException( "No suitable drivers found for URI scheme: " + scheme, originalError );
+	}
+
+	private static boolean schemaMatches(String schema, String... aliases) {
+		for ( String alias : aliases ) {
+			if ( alias.equalsIgnoreCase( schema ) ) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	@Override
