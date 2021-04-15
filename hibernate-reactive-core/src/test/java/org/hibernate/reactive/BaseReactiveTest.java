@@ -15,6 +15,7 @@ import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.reactive.common.AutoCloseable;
 import org.hibernate.reactive.containers.DatabaseConfiguration;
 import org.hibernate.reactive.containers.DatabaseConfiguration.DBType;
@@ -261,6 +262,14 @@ public abstract class BaseReactiveTest {
 		factoryManager.stop();
 	}
 
+	protected StandardServiceRegistry getServiceRegistry() {
+		return factoryManager.getHibernateSessionFactory().getSessionFactoryOptions().getServiceRegistry();
+
+	}
+	protected SessionFactoryImplementor getHibernateSessionFactory() {
+		return factoryManager.getHibernateSessionFactory().unwrap( SessionFactoryImplementor.class );
+	}
+
 	protected Stage.SessionFactory getSessionFactory() {
 		return factoryManager.getHibernateSessionFactory().unwrap( Stage.SessionFactory.class );
 	}
@@ -318,4 +327,5 @@ public abstract class BaseReactiveTest {
 	protected Mutiny.SessionFactory getMutinySessionFactory() {
 		return factoryManager.getHibernateSessionFactory().unwrap( Mutiny.SessionFactory.class );
 	}
+
 }
