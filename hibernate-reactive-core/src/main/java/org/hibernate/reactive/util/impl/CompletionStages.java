@@ -10,7 +10,6 @@ import com.ibm.asyncutil.iteration.AsyncTrampoline;
 import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
 
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -143,8 +142,12 @@ public class CompletionStages {
 	 * }
 	 * </pre>
 	 */
-	public static <T> CompletionStage<Void> loop(T[] array, Function<T,CompletionStage<?>> consumer) {
-		return loop( Arrays.stream(array), consumer );
+	public static <T> CompletionStage<Void> loop(T[] array, Function<T, CompletionStage<?>> consumer) {
+		AtomicInteger index = new AtomicInteger();
+		return AsyncTrampoline.asyncWhile( () -> {
+			int i = index.getAndIncrement();
+			return consumer.apply( array[i] ).thenApply( v -> i < array.length - 1 );
+		} );
 	}
 
 	/**
@@ -222,8 +225,13 @@ public class CompletionStages {
 	 * }
 	 * </pre>
 	 */
-	public static CompletionStage<Void> loop(int start, int end, Function<Integer,CompletionStage<?>> consumer) {
-		return loop( IntStream.range(start, end), consumer );
+	public static CompletionStage<Void> loop(int start, int end, Function<Integer, CompletionStage<?>> consumer) {
+		if ( start < end ) {
+			final AtomicInteger index = new AtomicInteger( start );
+			return AsyncTrampoline.asyncWhile( () -> consumer.apply( index.getAndIncrement() )
+					.thenApply( r -> index.get() < end ) );
+		}
+		return voidFuture();
 	}
 
 	public static CompletionStage<Void> applyToAll(Function<Object, CompletionStage<?>> op, Object[] entity) {
