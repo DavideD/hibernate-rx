@@ -207,19 +207,6 @@ public class CompletionStages {
 	/**
 	 * Equivalent to:
 	 * <pre>
-	 * Iterator iterator = inStream.iterator();
-	 * while( iterator.hasNext()) {
-	 *   consumer.apply( iterator.next() );
-	 * }
-	 * </pre>
-	 */
-	public static CompletionStage<Void> loop(IntStream stream, Function<Integer,CompletionStage<?>> consumer) {
-		return loop( stream.iterator(), consumer );
-	}
-
-	/**
-	 * Equivalent to:
-	 * <pre>
 	 * for ( int i = start; i < end; i++ ) {
 	 *   consumer.apply( i );
 	 * }
