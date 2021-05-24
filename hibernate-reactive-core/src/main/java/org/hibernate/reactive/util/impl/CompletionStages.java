@@ -5,20 +5,16 @@
  */
 package org.hibernate.reactive.util.impl;
 
-import com.ibm.asyncutil.iteration.AsyncIterator;
-import com.ibm.asyncutil.iteration.AsyncTrampoline;
-import org.hibernate.internal.CoreLogging;
-import org.hibernate.internal.CoreMessageLogger;
-
 import java.util.Iterator;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
+
+import org.hibernate.internal.CoreLogging;
+import org.hibernate.internal.CoreMessageLogger;
 
 public class CompletionStages {
 
@@ -100,10 +96,19 @@ public class CompletionStages {
 	 * }
 	 * </pre>
 	 */
-	public static <T> CompletionStage<Integer> total(int start, int end, Function<Integer,CompletionStage<Integer>> consumer) {
-		return AsyncIterator.range( start, end )
-				.thenCompose( i -> consumer.apply( i.intValue() ) )
-				.fold( 0, Integer::sum );
+	public static CompletionStage<Integer> total(int start, int end, Function<Integer,CompletionStage<Integer>> consumer) {
+		if ( start < end ) {
+			return trampolineTotal( start + 1, end, consumer, consumer.apply( start ) )
+					.result();
+		}
+		return CompletionStages.ZERO;
+	}
+
+	private static Trampoline<CompletionStage<Integer>> trampolineTotal(int index, int end, Function<Integer,CompletionStage<Integer>> consumer, CompletionStage<Integer> result) {
+		if ( index < end ) {
+			return Trampoline.more( () -> trampolineTotal( index + 1, end, consumer, result.thenCompose( total -> consumer.apply( index ).thenApply( acc -> total + acc ) ) ) );
+		}
+		return Trampoline.done( result );
 	}
 
 	/**
@@ -116,9 +121,19 @@ public class CompletionStages {
 	 * </pre>
 	 */
 	public static <T> CompletionStage<Integer> total(Iterator<T> iterator, Function<T,CompletionStage<Integer>> consumer) {
-		return AsyncIterator.fromIterator( iterator )
-				.thenCompose( consumer )
-				.fold( 0, Integer::sum );
+		if ( iterator.hasNext() ) {
+			return trampolineTotal( iterator, consumer, consumer.apply( iterator.next() ) )
+					.result();
+		}
+		return CompletionStages.ZERO;
+	}
+
+	private static <T> Trampoline<CompletionStage<Integer>> trampolineTotal(Iterator<T> iterator, Function<T,CompletionStage<Integer>> consumer, CompletionStage<Integer> result) {
+		if ( iterator.hasNext() ) {
+			T next = iterator.next();
+			return Trampoline.more( () -> trampolineTotal( iterator, consumer, result.thenCompose( total -> consumer.apply( next ).thenApply( acc -> total + acc ) ) ) );
+		}
+		return Trampoline.done( result );
 	}
 
 	/**
@@ -143,11 +158,18 @@ public class CompletionStages {
 	 * </pre>
 	 */
 	public static <T> CompletionStage<Void> loop(T[] array, Function<T, CompletionStage<?>> consumer) {
-		AtomicInteger index = new AtomicInteger();
-		return AsyncTrampoline.asyncWhile( () -> {
-			int i = index.getAndIncrement();
-			return consumer.apply( array[i] ).thenApply( v -> i < array.length - 1 );
-		} );
+		if ( array.length > 0 ) {
+			return trampolineLoop( array, consumer, 1, consumer.apply( array[0] ) )
+					.result().thenCompose( CompletionStages::voidFuture );
+		}
+		return voidFuture();
+	}
+
+	private static <T> Trampoline<CompletionStage<?>> trampolineLoop(T[] array, Function<T,CompletionStage<?>> consumer, int index, CompletionStage<?> result) {
+		if ( index < array.length ) {
+			return Trampoline.more( () -> trampolineLoop( array, consumer, index + 1, result.thenCompose( v -> consumer.apply( array[index] ) ) ) );
+		}
+		return Trampoline.done( result );
 	}
 
 	/**
@@ -160,23 +182,34 @@ public class CompletionStages {
 	 */
 	public static <T> CompletionStage<Void> loop(Iterator<T> iterator, BiFunction<T,Integer,CompletionStage<?>> consumer) {
 		if ( iterator.hasNext() ) {
-			AtomicInteger index = new AtomicInteger( 0 );
-			return AsyncTrampoline.asyncWhile( () -> consumer.apply( iterator.next(), index.getAndIncrement() )
-					.thenApply( r -> iterator.hasNext() ));
+			return trampolineLoop( iterator, consumer, 1, consumer.apply( iterator.next(), 0 ) ).result()
+					.thenCompose( CompletionStages::voidFuture );
 		}
-		else {
-			return voidFuture();
+		return voidFuture();
+	}
+
+	private static <T> Trampoline<CompletionStage<?>> trampolineLoop(Iterator<T> iterator, BiFunction<T,Integer,CompletionStage<?>> consumer, int index, CompletionStage<?> result) {
+		if ( iterator.hasNext() ) {
+			T next = iterator.next();
+			return Trampoline.more( () -> trampolineLoop( iterator, consumer, index + 1, result.thenCompose( v -> consumer.apply( next, index ) ) ) );
 		}
+		return Trampoline.done( result );
 	}
 
 	public static <T> CompletionStage<Void> loop(Iterator<T> iterator, Function<T,CompletionStage<?>> consumer) {
 		if ( iterator.hasNext() ) {
-			return AsyncTrampoline.asyncWhile( () -> consumer.apply( iterator.next() )
-					.thenApply( r -> iterator.hasNext() ));
+			return trampolineLoop( iterator, consumer, consumer.apply( iterator.next() ) ).result()
+					.thenCompose( CompletionStages::voidFuture );
 		}
-		else {
-			return voidFuture();
+		return voidFuture();
+	}
+
+	private static <T> Trampoline<CompletionStage<?>> trampolineLoop(Iterator<T> iterator, Function<T,CompletionStage<?>> consumer, CompletionStage<?> result) {
+		if ( iterator.hasNext() ) {
+			T next = iterator.next();
+			return Trampoline.more( () -> trampolineLoop( iterator, consumer, result.thenCompose( v -> consumer.apply( next ) ) ) );
 		}
+		return Trampoline.done( result );
 	}
 
 	/**
@@ -214,11 +247,17 @@ public class CompletionStages {
 	 */
 	public static CompletionStage<Void> loop(int start, int end, Function<Integer, CompletionStage<?>> consumer) {
 		if ( start < end ) {
-			final AtomicInteger index = new AtomicInteger( start );
-			return AsyncTrampoline.asyncWhile( () -> consumer.apply( index.getAndIncrement() )
-					.thenApply( r -> index.get() < end ) );
+			return trampolineLoop( end, consumer, start + 1, consumer.apply( start ) )
+					.result().thenCompose( CompletionStages::voidFuture );
 		}
 		return voidFuture();
+	}
+
+	public static <T> Trampoline<CompletionStage<?>> trampolineLoop(int end, Function<Integer,CompletionStage<?>> consumer, int index, CompletionStage<?> result) {
+		if ( index < end ) {
+			return Trampoline.more( () -> trampolineLoop( end, consumer, index + 1, result.thenCompose( v -> consumer.apply( index ) ) ) );
+		}
+		return Trampoline.done( result );
 	}
 
 	public static CompletionStage<Void> applyToAll(Function<Object, CompletionStage<?>> op, Object[] entity) {
