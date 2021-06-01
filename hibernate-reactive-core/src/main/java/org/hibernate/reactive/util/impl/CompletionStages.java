@@ -19,6 +19,8 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import static com.ibm.asyncutil.iteration.AsyncTrampoline.asyncWhile;
+
 public class CompletionStages {
 
 	private static final CoreMessageLogger log =
@@ -160,7 +162,7 @@ public class CompletionStages {
 	 */
 	public static <T> CompletionStage<Void> loop(Iterator<T> iterator, BiFunction<T, Integer, CompletionStage<?>> consumer) {
 		if ( iterator.hasNext() ) {
-			return AsyncTrampoline.asyncWhile(
+			return asyncWhile(
 					index -> iterator.hasNext(),
 					index -> consumer
 							.apply( iterator.next(), index )
@@ -173,7 +175,7 @@ public class CompletionStages {
 
 	public static <T> CompletionStage<Void> loop(Iterator<T> iterator, Function<T, CompletionStage<?>> consumer) {
 		if ( iterator.hasNext() ) {
-			return AsyncTrampoline.asyncWhile( () -> consumer.apply( iterator.next() )
+			return asyncWhile( () -> consumer.apply( iterator.next() )
 					.thenApply( r -> iterator.hasNext() ) );
 		}
 		return voidFuture();
@@ -219,7 +221,7 @@ public class CompletionStages {
 	public static CompletionStage<Void> loop(int start, int end, Predicate<Integer> filter, Function<Integer, CompletionStage<?>> consumer) {
 		if ( start < end ) {
 			int realStart = next( start, end, filter);
-			return AsyncTrampoline.asyncWhile(
+			return asyncWhile(
 					index -> index < end,
 					index -> consumer.apply( index )
 								.thenApply( u -> next( index + 1, end, filter ) ),
