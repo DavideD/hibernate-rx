@@ -29,6 +29,7 @@ public class CompletionStages {
 	private static final CompletionStage<Integer> ZERO = completedFuture( 0 );
 	private static final CompletionStage<Boolean> TRUE = completedFuture( true );
 	private static final CompletionStage<Boolean> FALSE = completedFuture( false );
+	private static final Predicate<Integer> ALWAYS_TRUE = integer -> true;
 
 	public static CompletionStage<Void> voidFuture(Object ignore) {
 		return voidFuture();
@@ -212,7 +213,7 @@ public class CompletionStages {
 	 * </pre>
 	 */
 	public static CompletionStage<Void> loop(int start, int end, Function<Integer, CompletionStage<?>> consumer) {
-		return loop( start, end, index -> true, consumer );
+		return loop( start, end, ALWAYS_TRUE, consumer );
 	}
 
 	public static CompletionStage<Void> loop(int start, int end, Predicate<Integer> filter, Function<Integer, CompletionStage<?>> consumer) {
