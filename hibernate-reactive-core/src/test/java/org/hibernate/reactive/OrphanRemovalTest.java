@@ -35,35 +35,44 @@ public class OrphanRemovalTest extends BaseReactiveTest {
 
     @Test
     public void testOrphan(TestContext context) {
-        Shop shop = new Shop("shop");
-        Product product = new Product("ap1", shop);
-        product.addVersion(new Version(product));
-        shop.addProduct(product);
-        shop.addProduct(new Product("ap2", shop));
-        shop.addProduct(new Product("ap3", shop));
-        shop.addProduct(new Product("ap4", shop));
+        Shop shop = new Shop( "shop" );
+        Product product = new Product( "ap1", shop );
+        product.addVersion( new Version( product ) );
+        shop.addProduct( product );
+        shop.addProduct( new Product( "ap2", shop ) );
+        shop.addProduct( new Product( "ap3", shop ) );
+        shop.addProduct( new Product( "ap4", shop ) );
 
-        test(context,
-                getSessionFactory()
-                        .withTransaction((session, transaction) -> session.persist(shop))
-                        .thenCompose(v -> getSessionFactory().withTransaction((session, transaction) -> session.find(Shop.class, shop.id)
-                                .thenCompose( result -> session.fetch(result.products).thenApply(products -> result) )
-                                .thenAccept(result -> {
-                                    // update
-                                    result.products.clear();
-                                    result.addProduct(new Product("bp5", result));
-                                    result.addProduct(new Product("bp6", result));
-                                    result.addProduct(new Product("bp7", result));
-                                })
-                        ))
-                        .thenCompose(v -> getSessionFactory().withTransaction((session, transaction) ->
-                                session.createQuery("select count(*) from Product", Long.class)
-                                        .getSingleResult().thenAccept( result -> context.assertEquals( 3L, result ) )
-                        ))
-                        .thenCompose(v -> getSessionFactory().withTransaction((session, transaction) ->
-                                session.createQuery("select name from Product" )
-                                        .getResultList().thenAccept(list -> assertThat( list ).containsExactlyInAnyOrder( "bp5", "bp6", "bp7"))
-                        ))
+        test( context, getSessionFactory()
+                        .withTransaction( (session, transaction) -> session.persist( shop ) )
+                        .thenCompose( v -> getSessionFactory()
+                                .withTransaction( (session, transaction) -> session
+                                        .find( Shop.class, shop.id )
+                                        .thenCompose( result -> session.
+                                                fetch( result.products )
+                                                .thenApply( products -> result ) )
+                                        .thenAccept( result -> {
+                                            // update
+                                            result.products.clear();
+                                            result.addProduct( new Product( "bp5", result ) );
+                                            result.addProduct( new Product( "bp6", result ) );
+                                            result.addProduct( new Product( "bp7", result ) );
+                                        } )
+                                ) )
+                        .thenCompose( v -> getSessionFactory()
+                                .withTransaction( (session, transaction) -> session
+                                        .createQuery( "select count(*) from Product", Long.class )
+                                        .getSingleResult()
+                                        .thenAccept( result -> context.assertEquals( 3L, result
+                                                                                                        ) )
+                        ) )
+                        .thenCompose( v -> getSessionFactory()
+                                .withTransaction( (session, transaction) -> session
+                                        .createQuery( "select name from Product" )
+                                        .getResultList()
+                                        .thenAccept( list -> assertThat( list )
+                                                .containsExactlyInAnyOrder( "bp5", "bp6", "bp7" ) )
+                        ) )
         );
     }
 

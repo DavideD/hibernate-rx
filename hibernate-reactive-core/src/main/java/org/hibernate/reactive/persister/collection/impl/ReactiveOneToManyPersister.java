@@ -34,7 +34,6 @@ import java.util.concurrent.CompletionStage;
 import static org.hibernate.jdbc.Expectations.appropriateExpectation;
 import static org.hibernate.reactive.util.impl.CompletionStages.loop;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
-import static org.hibernate.reactive.util.impl.CompletionStages.zeroFuture;
 
 /**
  * A reactive {@link OneToManyPersister}
@@ -211,12 +210,13 @@ public class ReactiveOneToManyPersister extends OneToManyPersister
 			result = result.thenCompose( v -> loop( 0, entries.size(),
 					i -> collection.needsUpdating( entries.get( i ), i, elementType ),  // will still be issued when it used to be null
 					i -> {
+							Object entry = entries.get(i);
 							int offset = 1;
 							return getReactiveConnection( session ).update(
 									getSQLDeleteRowString(),
 									PreparedStatementAdaptor.bind( st -> {
 										int loc = writeKey( st, id, offset, session );
-										writeElementToWhere( st, collection.getSnapshotElement( entries.get( i ), i ), loc, session );
+										writeElementToWhere( st, collection.getSnapshotElement( entry, i ), loc, session );
 									} ),
 									deleteExpectation.canBeBatched(),
 									new ExpectationAdaptor( deleteExpectation, getSQLDeleteRowString(), getSQLExceptionConverter() )

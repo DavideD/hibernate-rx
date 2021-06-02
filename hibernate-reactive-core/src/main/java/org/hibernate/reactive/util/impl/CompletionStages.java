@@ -148,8 +148,18 @@ public class CompletionStages {
 		return loop( 0, array.length, index -> consumer.apply( array[index] ) );
 	}
 
-	public static <T> CompletionStage<Void> loop(T[] array, IntPredicate filter, Function<T, CompletionStage<?>> consumer) {
-		return loop( 0, array.length, filter, index -> consumer.apply( array[index] ) );
+	/**
+	 * Equivalent to:
+	 * <pre>
+	 * for ( int i = start; i < end; i++ ) {
+	 *   if ( filter.test(i) )  {
+	 *   	consumer.apply( i );
+	 *   }
+	 * }
+	 * </pre>
+	 */
+	public static <T> CompletionStage<Void> loop(T[] array, IntPredicate filter, IntFunction<CompletionStage<?>> consumer) {
+		return loop( 0, array.length, filter, consumer::apply );
 	}
 
 	@FunctionalInterface
@@ -160,8 +170,9 @@ public class CompletionStages {
 	/**
 	 * Equivalent to:
 	 * <pre>
+	 * int index = 0
 	 * while( iterator.hasNext() ) {
-	 *   consumer.apply( iterator.next() );
+	 *   consumer.apply( iterator.next(), index++ );
 	 * }
 	 * </pre>
 	 */
@@ -225,7 +236,7 @@ public class CompletionStages {
 	 * Equivalent to:
 	 * <pre>
 	 * Iterator iterator = stream.iterator();
-	 * while( iterator.hasNext()) {
+	 * while( iterator.hasNext() ) {
 	 *   consumer.apply( iterator.next() );
 	 * }
 	 * </pre>
@@ -246,6 +257,16 @@ public class CompletionStages {
 		return loop( start, end, ALWAYS_TRUE, consumer );
 	}
 
+	/**
+	 * Equivalent to:
+	 * <pre>
+	 * for ( int i = start; i < end; i++ ) {
+	 *   if ( filter.test(i) ) {
+	 *   	consumer.apply( i );
+	 *   }
+	 * }
+	 * </pre>
+	 */
 	public static CompletionStage<Void> loop(int start, int end, IntPredicate filter, IntFunction<CompletionStage<?>> consumer) {
 		if ( start < end ) {
 			final ArrayLoop loop = new ArrayLoop( start, end, filter, consumer);

@@ -131,7 +131,7 @@ public abstract class AbstractReactiveFlushingEventListener {
 		return loop(
 				entries,
 				index -> flushable( entries[index].getValue() ),
-				entry -> cascadeOnFlush( session, entry.getValue().getPersister(), entry.getKey(), copiedAlready )
+				index -> cascadeOnFlush( session, entries[index].getValue().getPersister(), entries[index].getKey(), copiedAlready )
 		);
 	}
 
