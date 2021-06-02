@@ -5,11 +5,6 @@
  */
 package org.hibernate.reactive.util.impl;
 
-import com.ibm.asyncutil.iteration.AsyncIterator;
-import com.ibm.asyncutil.iteration.AsyncTrampoline;
-import org.hibernate.internal.CoreLogging;
-import org.hibernate.internal.CoreMessageLogger;
-
 import java.util.Iterator;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -18,6 +13,11 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
+
+import org.hibernate.internal.CoreLogging;
+import org.hibernate.internal.CoreMessageLogger;
+
+import com.ibm.asyncutil.iteration.AsyncIterator;
 
 import static com.ibm.asyncutil.iteration.AsyncTrampoline.asyncWhile;
 
