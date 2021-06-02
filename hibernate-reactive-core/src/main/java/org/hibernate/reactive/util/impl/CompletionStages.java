@@ -202,14 +202,14 @@ public class CompletionStages {
 				T next = iterator.next();
 				final int index = current++;
 				return consumer.apply( next, index )
-						.thenCompose( this::shouldContinue );
+						.thenCompose( CompletionStages::alwaysContinue );
 			}
 			return FALSE;
 		}
+	}
 
-		private CompletionStage<Boolean> shouldContinue(Object ignored) {
-			return iterator.hasNext() ? TRUE : FALSE;
-		}
+	private static CompletionStage<Boolean> alwaysContinue(Object ignored) {
+		return TRUE;
 	}
 
 	public static <T> CompletionStage<Void> loop(Iterator<T> iterator, Function<T, CompletionStage<?>> consumer) {
@@ -295,7 +295,7 @@ public class CompletionStages {
 				final int index = current;
 				current = next( current + 1 );
 				return consumer.apply( index )
-						.thenCompose( o -> TRUE  );
+						.thenCompose( CompletionStages::alwaysContinue );
 			}
 			return FALSE;
 		}
