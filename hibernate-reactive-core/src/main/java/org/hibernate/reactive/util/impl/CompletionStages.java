@@ -294,9 +294,8 @@ public class CompletionStages {
 			if ( current < end ) {
 				final int index = current;
 				current = next( current + 1 );
-				final boolean shouldContinue = current < end;
 				return consumer.apply( index )
-						.thenCompose( o -> shouldContinue ? TRUE : FALSE );
+						.thenCompose( o -> TRUE  );
 			}
 			return FALSE;
 		}
