@@ -8,9 +8,9 @@ package org.hibernate.reactive.util.impl;
 import java.util.Iterator;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.function.IntFunction;
+import java.util.function.IntPredicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -31,7 +31,7 @@ public class CompletionStages {
 	private static final CompletionStage<Integer> ZERO = completedFuture( 0 );
 	private static final CompletionStage<Boolean> TRUE = completedFuture( true );
 	private static final CompletionStage<Boolean> FALSE = completedFuture( false );
-	private static final Predicate<Integer> ALWAYS_TRUE = integer -> true;
+	private static final IntPredicate ALWAYS_TRUE = integer -> true;
 
 	public static CompletionStage<Void> voidFuture(Object ignore) {
 		return voidFuture();
@@ -102,7 +102,7 @@ public class CompletionStages {
 	 * }
 	 * </pre>
 	 */
-	public static CompletionStage<Integer> total(int start, int end, Function<Integer,CompletionStage<Integer>> consumer) {
+	public static CompletionStage<Integer> total(int start, int end, IntFunction<CompletionStage<Integer>> consumer) {
 		return AsyncIterator.range( start, end )
 				.thenCompose( i -> consumer.apply( i.intValue() ) )
 				.fold( 0, Integer::sum );
@@ -132,7 +132,7 @@ public class CompletionStages {
 	 * }
 	 * </pre>
 	 */
-	public static <T> CompletionStage<Integer> total(T[] array, Function<T,CompletionStage<Integer>> consumer) {
+	public static <T> CompletionStage<Integer> total(T[] array, Function<T, CompletionStage<Integer>> consumer) {
 		return total( 0, array.length, index -> consumer.apply( array[index] ) );
 	}
 
@@ -148,8 +148,13 @@ public class CompletionStages {
 		return loop( 0, array.length, index -> consumer.apply( array[index] ) );
 	}
 
-	public static <T> CompletionStage<Void> loop(T[] array, Predicate<T> filter, Function<T, CompletionStage<?>> consumer) {
-		return loop( 0, array.length, index -> filter.test( array[index] ), index -> consumer.apply( array[index] ) );
+	public static <T> CompletionStage<Void> loop(T[] array, IntPredicate filter, Function<T, CompletionStage<?>> consumer) {
+		return loop( 0, array.length, index -> filter.test( index ), index -> consumer.apply( array[index] ) );
+	}
+
+	@FunctionalInterface
+	public interface IntBiFunction<T, R> {
+		R apply(T value, int integer);
 	}
 
 	/**
@@ -160,17 +165,41 @@ public class CompletionStages {
 	 * }
 	 * </pre>
 	 */
-	public static <T> CompletionStage<Void> loop(Iterator<T> iterator, BiFunction<T, Integer, CompletionStage<?>> consumer) {
+	public static <T> CompletionStage<Void> loop(Iterator<T> iterator, IntBiFunction<T, CompletionStage<?>> consumer) {
 		if ( iterator.hasNext() ) {
-			return asyncWhile(
-					index -> iterator.hasNext(),
-					index -> consumer
-							.apply( iterator.next(), index )
-							.thenApply( u -> index + 1 ),
-					0
-			).thenAccept( CompletionStages::voidFuture );
+			IndexedIteratorLoop<T> loop = new IndexedIteratorLoop( iterator, consumer );
+			return asyncWhile( loop::next )
+					.thenCompose( CompletionStages::voidFuture );
 		}
 		return voidFuture();
+	}
+
+	private static class IndexedIteratorLoop<T> {
+
+		private final IntBiFunction<T, CompletionStage<?>> consumer;
+		private final Iterator<T> iterator;
+		// FIXME: Do I need thread safety checks here?
+		private int current;
+
+		public IndexedIteratorLoop(Iterator<T> iterator, IntBiFunction<T, CompletionStage<?>> consumer) {
+			this.iterator = iterator;
+			this.consumer = consumer;
+			this.current = 0;
+		}
+
+		public CompletionStage<Boolean> next() {
+			if ( iterator.hasNext() ) {
+				T next = iterator.next();
+				final int index = current++;
+				return consumer.apply( next, index )
+						.thenCompose( this::shouldContinue );
+			}
+			return FALSE;
+		}
+
+		private CompletionStage<Boolean> shouldContinue(Object ignored) {
+			return iterator.hasNext() ? TRUE : FALSE;
+		}
 	}
 
 	public static <T> CompletionStage<Void> loop(Iterator<T> iterator, Function<T, CompletionStage<?>> consumer) {
@@ -214,30 +243,52 @@ public class CompletionStages {
 	 * }
 	 * </pre>
 	 */
-	public static CompletionStage<Void> loop(int start, int end, Function<Integer, CompletionStage<?>> consumer) {
+	public static CompletionStage<Void> loop(int start, int end, IntFunction<CompletionStage<?>> consumer) {
 		return loop( start, end, ALWAYS_TRUE, consumer );
 	}
 
-	public static CompletionStage<Void> loop(int start, int end, Predicate<Integer> filter, Function<Integer, CompletionStage<?>> consumer) {
+	public static CompletionStage<Void> loop(int start, int end, IntPredicate filter, IntFunction<CompletionStage<?>> consumer) {
 		if ( start < end ) {
-			int realStart = next( start, end, filter);
-			return asyncWhile(
-					index -> index < end,
-					index -> consumer.apply( index )
-								.thenApply( u -> next( index + 1, end, filter ) ),
-					realStart
-			).thenCompose( CompletionStages::voidFuture );
+			final ArrayLoop loop = new ArrayLoop( start, end, filter, consumer);
+			return asyncWhile( loop::next )
+					.thenCompose( CompletionStages::voidFuture );
 		}
 		return voidFuture();
 	}
 
-	// Skip all the indexes not matching the filter
-	private static int next(int start, int end, Predicate<Integer> filter) {
-		int index = start;
-		while ( index < end && !filter.test( index ) ) {
-			index++;
+	private static class ArrayLoop {
+
+		private final IntPredicate filter;
+		private final IntFunction<CompletionStage<?>> consumer;
+		private final int end;
+		private int current;
+
+		public ArrayLoop(int start, int end, IntPredicate filter, IntFunction<CompletionStage<?>> consumer) {
+			this.end = end;
+			this.filter = filter;
+			this.consumer = consumer;
+			this.current = next( start );
 		}
-		return index;
+
+		public CompletionStage<Boolean> next() {
+			if ( current < end ) {
+				final int index = current;
+				current = next( current + 1 );
+				final boolean shouldContinue = current < end;
+				return consumer.apply( index )
+						.thenCompose( o -> shouldContinue ? TRUE : FALSE );
+			}
+			return FALSE;
+		}
+
+		// Skip all the indexes not matching the filter
+		private int next(int current) {
+			int index = current;
+			while ( index < end && !filter.test( index ) ) {
+				index++;
+			}
+			return index;
+		}
 	}
 
 	public static CompletionStage<Void> applyToAll(Function<Object, CompletionStage<?>> op, Object[] entity) {

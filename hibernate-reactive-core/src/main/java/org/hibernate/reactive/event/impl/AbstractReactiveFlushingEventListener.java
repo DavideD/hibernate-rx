@@ -127,9 +127,10 @@ public abstract class AbstractReactiveFlushingEventListener {
 
 		IdentitySet copiedAlready = new IdentitySet( 10 );
 		//safe from concurrent modification because of how concurrentEntries() is implemented on IdentityMap
+		Map.Entry<Object, EntityEntry>[] entries = persistenceContext.reentrantSafeEntityEntries();
 		return loop(
-				persistenceContext.reentrantSafeEntityEntries(),
-				entry -> flushable( entry.getValue() ),
+				entries,
+				index -> flushable( entries[index].getValue() ),
 				entry -> cascadeOnFlush( session, entry.getValue().getPersister(), entry.getKey(), copiedAlready )
 		);
 	}
