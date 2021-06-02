@@ -149,7 +149,7 @@ public class CompletionStages {
 	}
 
 	public static <T> CompletionStage<Void> loop(T[] array, IntPredicate filter, Function<T, CompletionStage<?>> consumer) {
-		return loop( 0, array.length, index -> filter.test( index ), index -> consumer.apply( array[index] ) );
+		return loop( 0, array.length, filter, index -> consumer.apply( array[index] ) );
 	}
 
 	@FunctionalInterface
@@ -167,7 +167,7 @@ public class CompletionStages {
 	 */
 	public static <T> CompletionStage<Void> loop(Iterator<T> iterator, IntBiFunction<T, CompletionStage<?>> consumer) {
 		if ( iterator.hasNext() ) {
-			IndexedIteratorLoop<T> loop = new IndexedIteratorLoop( iterator, consumer );
+			IndexedIteratorLoop<T> loop = new IndexedIteratorLoop<>( iterator, consumer );
 			return asyncWhile( loop::next )
 					.thenCompose( CompletionStages::voidFuture );
 		}

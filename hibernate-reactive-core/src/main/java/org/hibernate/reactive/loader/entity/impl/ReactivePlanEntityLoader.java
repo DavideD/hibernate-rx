@@ -33,7 +33,6 @@ import org.hibernate.reactive.loader.ReactiveLoader;
 import org.hibernate.reactive.loader.ReactiveResultSetProcessor;
 import org.hibernate.reactive.loader.entity.ReactiveUniqueEntityLoader;
 import org.hibernate.reactive.pool.impl.Parameters;
-import org.hibernate.reactive.util.impl.CompletionStages;
 import org.hibernate.transform.ResultTransformer;
 import org.hibernate.type.Type;
 
@@ -45,6 +44,7 @@ import java.util.concurrent.CompletionStage;
 
 import static org.hibernate.pretty.MessageHelper.infoString;
 import static org.hibernate.reactive.util.impl.CompletionStages.logSqlException;
+import static org.hibernate.reactive.util.impl.CompletionStages.loop;
 import static org.hibernate.reactive.util.impl.CompletionStages.returnOrRethrow;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
@@ -436,14 +436,8 @@ public class ReactivePlanEntityLoader extends AbstractLoadPlanBasedEntityLoader
 
 			final SharedSessionContractImplementor session = context.getSession();
 
-			return CompletionStages.loop(
-					hydratedEntityRegistrations,
-					registration -> resultSetProcessor.initializeEntity(
-							registration.getInstance(),
-							false,
-							session,
-							preLoadEvent
-					)
+			return loop( hydratedEntityRegistrations, registration -> resultSetProcessor
+					.initializeEntity( registration.getInstance(), false, session, preLoadEvent )
 			);
 		}
 	}
