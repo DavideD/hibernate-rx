@@ -178,7 +178,6 @@ public class CompletionStages {
 
 		private final IntBiFunction<T, CompletionStage<?>> consumer;
 		private final Iterator<T> iterator;
-		// FIXME: Do I need thread safety checks here?
 		private int current;
 
 		public IndexedIteratorLoop(Iterator<T> iterator, IntBiFunction<T, CompletionStage<?>> consumer) {
