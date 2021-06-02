@@ -483,7 +483,7 @@ public final class Cascade<C> {
 			persistenceContext.addChildParent( child, parent );
 			stage = stage.thenCompose( v -> action.cascade( eventSource, child, entityName, context, isCascadeDeleteEnabled ) )
 					.whenComplete( (vv, e) -> persistenceContext.removeChildParent( child ) )
-					.thenAccept( vv -> {} );
+					.thenCompose( CompletionStages::voidFuture );
 		}
 	}
 
