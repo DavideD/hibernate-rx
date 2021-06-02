@@ -227,7 +227,7 @@ public class ReactiveOneToManyPersister extends OneToManyPersister
 		if ( isRowInsertEnabled() ) {
 			Expectation insertExpectation = appropriateExpectation( getInsertCheckStyle() );
 			result = result.thenCompose( v -> loop( 0, entries.size(),
-					i -> collection.needsUpdating( entries.get(i), i, elementType ),  // will still be issued when it used to be null
+					i -> collection.needsUpdating( entries.get( i ), i, elementType ),  // will still be issued when it used to be null
 					i -> {
 						Object entry = entries.get(i);
 						return getReactiveConnection( session ).update(
@@ -275,40 +275,37 @@ public class ReactiveOneToManyPersister extends OneToManyPersister
 			}
 
 			Expectation expectation = appropriateExpectation( getUpdateCheckStyle() );
-			return stage.thenCompose( v -> loop(
-					0,
-					entries.size(),
-					(index) -> {
+			return stage.thenCompose( v -> loop( 0, entries.size(),
+					index -> {
 						Object entry = entries.get( index );
-						if ( entry != null && collection.entryExists( entry, index ) ) {
-							return getReactiveConnection( session ).update(
-									getSQLUpdateRowString(),
-									PreparedStatementAdaptor.bind( st -> {
-										int offset = 1;
-										offset += expectation.prepare( st );
-										if ( hasIdentifier ) {
-											offset = writeIdentifier(
-													st,
-													collection.getIdentifier( entry, index ),
-													offset,
-													session
-											);
-										}
-										offset = writeIndex(
+						return entry != null && collection.entryExists( entry, index );
+					},
+					index -> {
+						Object entry = entries.get( index );
+						return getReactiveConnection( session ).update(
+								getSQLUpdateRowString(),
+								PreparedStatementAdaptor.bind( st -> {
+									int offset = 1;
+									offset += expectation.prepare( st );
+									if ( hasIdentifier ) {
+										offset = writeIdentifier(
 												st,
-												collection.getIndex( entry, index, this ),
+												collection.getIdentifier( entry, index ),
 												offset,
 												session
 										);
-										offset = writeElement( st, collection.getElement(entry), offset, session );
-									} ),
-									expectation.canBeBatched(),
-									new ExpectationAdaptor( expectation, getSQLUpdateRowString(), getSQLExceptionConverter() )
-							);
-						}
-						else {
-							return zeroFuture();
-						}
+									}
+									offset = writeIndex(
+											st,
+											collection.getIndex( entry, index, this ),
+											offset,
+											session
+									);
+									offset = writeElement( st, collection.getElement(entry), offset, session );
+								} ),
+								expectation.canBeBatched(),
+								new ExpectationAdaptor( expectation, getSQLUpdateRowString(), getSQLExceptionConverter() )
+						);
 					}
 			) );
 		}
