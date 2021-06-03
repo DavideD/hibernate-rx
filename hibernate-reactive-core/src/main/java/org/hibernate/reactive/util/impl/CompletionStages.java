@@ -243,14 +243,13 @@ public class CompletionStages {
 			this.iterator = iterator;
 			this.filter = filter;
 			this.consumer = consumer;
-			filterValues();
 		}
 
 		public CompletionStage<Boolean> next() {
+			filterValues();
 			if ( hasNext ) {
 				final T entry = currentEntry;
 				final int index = currentIndex;
-				filterValues();
 				return consumer.apply( entry, index )
 						.thenCompose( CompletionStages::alwaysContinue );
 			}
