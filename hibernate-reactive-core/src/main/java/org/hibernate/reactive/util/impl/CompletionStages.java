@@ -346,13 +346,13 @@ public class CompletionStages {
 			this.end = end;
 			this.filter = filter;
 			this.consumer = consumer;
-			this.current = next( start );
+			this.current = start;
 		}
 
 		public CompletionStage<Boolean> next() {
+			current = next( current );
 			if ( current < end ) {
-				final int index = current;
-				current = next( current + 1 );
+				final int index = current++;
 				return consumer.apply( index )
 						.thenCompose( CompletionStages::alwaysContinue );
 			}
