@@ -191,10 +191,22 @@ public class CompletionStages {
 	public static <T> CompletionStage<Void> loop(Iterator<T> iterator, IntBiFunction<T, CompletionStage<?>> consumer) {
 		return loop( iterator, CompletionStages::alwaysTrue, consumer );
 	}
-
+	/**
+	 * Equivalent to:
+	 * <pre>
+	 * int index = -1
+	 * while( iterator.hasNext() ) {
+	 *   index++
+	 *   T next = iterator.next();
+	 *   if (filter.test( next, index) {
+	 *     consumer.apply( next, index );
+	 *   }
+	 * }
+	 * </pre>
+	 */
 	public static <T> CompletionStage<Void> loop(Iterator<T> iterator, IntBiPredicate<T> filter, IntBiFunction<T, CompletionStage<?>> consumer) {
 		if ( iterator.hasNext() ) {
-			IndexedIteratorLoop<T> loop = new IndexedIteratorLoop<>( iterator, filter, consumer );
+			final IndexedIteratorLoop<T> loop = new IndexedIteratorLoop<>( iterator, filter, consumer );
 			return asyncWhile( loop::next )
 					.thenCompose( CompletionStages::voidFuture );
 		}
@@ -206,6 +218,7 @@ public class CompletionStages {
 		private final IntBiPredicate<T> filter;
 		private final IntBiFunction<T, CompletionStage<?>> consumer;
 		private final Iterator<T> iterator;
+		private boolean hasNext;
 		private int currentIndex = -1;
 		private T currentEntry;
 
@@ -217,8 +230,8 @@ public class CompletionStages {
 		}
 
 		public CompletionStage<Boolean> next() {
-			if ( iterator.hasNext() ) {
-				final T entry = iterator.next();
+			if ( hasNext ) {
+				final T entry = currentEntry;
 				final int index = currentIndex;
 				filterValues();
 				return consumer.apply( entry, index )
@@ -230,11 +243,13 @@ public class CompletionStages {
 		// Skip all the indexes not matching the filter
 		private void filterValues() {
 			int index = currentIndex;
-			T next = null;
+			T next = currentEntry;
+			this.hasNext = false;
 			while ( iterator.hasNext() ) {
 				next = iterator.next();
 				index++;
 				if ( filter.test( next, index ) ) {
+					this.hasNext = true;
 					break;
 				}
 			}

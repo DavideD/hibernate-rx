@@ -97,6 +97,14 @@ public class CompletionStagesTest {
 	}
 
 	@Test
+	public void testLoopOnIteratorWithIndex(TestContext context) {
+		test( context, loop( iterator( entries ), (entry, index) -> {
+			assertThat( entry ).isEqualTo( entries[index] );
+			return completedFuture( looped.add( entry ) );
+		} ).thenAccept( v -> assertThat( looped ).containsExactly( entries ) ) );
+	}
+
+	@Test
 	public void testLoopOnIterable(TestContext context) {
 		test( context, loop( asList( entries ), entry -> completedFuture( looped.add( entry ) ) )
 				.thenAccept( v -> assertThat( looped ).containsExactly( entries ) ) );
