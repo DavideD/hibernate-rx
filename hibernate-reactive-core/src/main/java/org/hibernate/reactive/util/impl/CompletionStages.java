@@ -198,7 +198,7 @@ public class CompletionStages {
 	 * while( iterator.hasNext() ) {
 	 *   index++
 	 *   T next = iterator.next();
-	 *   if (filter.test( next, index) {
+	 *   if (filter.test( next, index ) {
 	 *     consumer.apply( next, index );
 	 *   }
 	 * }
@@ -350,9 +350,12 @@ public class CompletionStages {
 			return FALSE;
 		}
 
-		// Skip all the indexes not matching the filter
-		private int next(int current) {
-			int index = current;
+		/**
+		 * @param start the first index to test
+		 * @return the next valid index
+		 */
+		private int next(int start) {
+			int index = start;
 			while ( index < end && !filter.test( index ) ) {
 				index++;
 			}
