@@ -11,6 +11,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -158,14 +159,14 @@ public class CompletionStages {
 	 * </pre>
 	 */
 	public static <T> CompletionStage<Void> loop(T[] array, IntPredicate filter, IntFunction<CompletionStage<?>> consumer) {
-		return loop( 0, array.length, filter, consumer::apply );
+		return loop( 0, array.length, filter, consumer );
 	}
 
 	private static <T> boolean alwaysTrue(T o, int index) {
 		return true;
 	}
 
-	private static <T> boolean alwaysTrue(int index) {
+	private static boolean alwaysTrue(int index) {
 		return true;
 	}
 
@@ -177,6 +178,22 @@ public class CompletionStages {
 	@FunctionalInterface
 	public interface IntBiPredicate<T> {
 		boolean test(T value, int integer);
+	}
+
+	/**
+	 * Equivalent to:
+	 * <pre>
+	 * while( iterator.hasNext() ) {
+	 *   consumer.apply( iterator.next() );
+	 * }
+	 * </pre>
+	 */
+	public static <T> CompletionStage<Void> loop(Iterator<T> iterator, Function<T, CompletionStage<?>> consumer) {
+		return loop( iterator, CompletionStages::alwaysTrue, (value, integer) -> consumer.apply( value ) );
+	}
+
+	public static <T> CompletionStage<Void> loop(Iterator<T> iterator, Predicate<T> filter, Function<T, CompletionStage<?>> consumer) {
+		return loop( iterator, (value, integer) -> filter.test( value ), (value, integer) -> consumer.apply( value ) );
 	}
 
 	/**
@@ -260,14 +277,6 @@ public class CompletionStages {
 
 	private static CompletionStage<Boolean> alwaysContinue(Object ignored) {
 		return TRUE;
-	}
-
-	public static <T> CompletionStage<Void> loop(Iterator<T> iterator, Function<T, CompletionStage<?>> consumer) {
-		if ( iterator.hasNext() ) {
-			return asyncWhile( () -> consumer.apply( iterator.next() )
-					.thenApply( r -> iterator.hasNext() ) );
-		}
-		return voidFuture();
 	}
 
 	/**

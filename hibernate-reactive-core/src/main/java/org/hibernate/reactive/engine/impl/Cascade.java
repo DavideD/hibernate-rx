@@ -38,6 +38,7 @@ import java.util.Iterator;
 import java.util.concurrent.CompletionStage;
 
 import static org.hibernate.pretty.MessageHelper.infoString;
+import static org.hibernate.reactive.util.impl.CompletionStages.loop;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
 /**
@@ -554,7 +555,7 @@ public final class Cascade<C> {
 		final Collection<?> orphans;
 		if ( pc.wasInitialized() ) {
 			final CollectionEntry ce = eventSource.getPersistenceContextInternal().getCollectionEntry( pc );
-			orphans = ce==null
+			orphans = ce == null
 					? Collections.EMPTY_LIST
 					: ce.getOrphans( entityName, pc );
 		}
@@ -563,12 +564,13 @@ public final class Cascade<C> {
 		}
 
 		ReactiveSession session = (ReactiveSession) eventSource;
-		stage = stage.thenCompose( v -> CompletionStages.loop( orphans, orphan -> {
-			if ( orphan != null ) {
-				LOG.tracev( "Deleting orphaned entity instance: {0}", entityName );
-				return session.reactiveRemove( orphan, false, new IdentitySet() );
-			}
-			return voidFuture();
-		} ) );
+		stage = stage.thenCompose( v -> loop(
+				orphans.iterator(),
+				orphan -> orphan != null,
+				orphan -> {
+					LOG.tracev( "Deleting orphaned entity instance: {0}", entityName );
+					return session.reactiveRemove( orphan, false, new IdentitySet() );
+				}
+		) );
 	}
 }
