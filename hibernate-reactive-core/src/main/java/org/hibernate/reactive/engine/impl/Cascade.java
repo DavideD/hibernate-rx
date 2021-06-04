@@ -483,7 +483,7 @@ public final class Cascade<C> {
 			persistenceContext.addChildParent( child, parent );
 			stage = stage.thenCompose( v -> action.cascade( eventSource, child, entityName, context, isCascadeDeleteEnabled ) )
 					.whenComplete( (vv, e) -> persistenceContext.removeChildParent( child ) )
-					.thenAccept( vv -> {} );
+					.thenCompose( CompletionStages::voidFuture );
 		}
 	}
 
@@ -554,7 +554,7 @@ public final class Cascade<C> {
 		final Collection<?> orphans;
 		if ( pc.wasInitialized() ) {
 			final CollectionEntry ce = eventSource.getPersistenceContextInternal().getCollectionEntry( pc );
-			orphans = ce==null
+			orphans = ce == null
 					? Collections.EMPTY_LIST
 					: ce.getOrphans( entityName, pc );
 		}
