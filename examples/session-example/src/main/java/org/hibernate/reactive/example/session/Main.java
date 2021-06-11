@@ -1,24 +1,19 @@
 package org.hibernate.reactive.example.session;
 
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Join;
-import javax.persistence.criteria.Root;
-
 import java.sql.ResultSet;
 import java.time.LocalDate;
+import javax.persistence.EntityManagerFactory;
 
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.reactive.pool.ReactiveConnectionPool;
 import org.hibernate.reactive.stage.Stage;
+import org.hibernate.reactive.util.impl.CompletionStages;
 
 import static java.lang.System.out;
 import static java.time.Month.JANUARY;
 import static java.time.Month.JUNE;
 import static java.time.Month.MAY;
 import static javax.persistence.Persistence.createEntityManagerFactory;
-import static org.hibernate.reactive.stage.Stage.SessionFactory;
-import static org.hibernate.reactive.stage.Stage.fetch;
 
 /**
  * Demonstrates the use of Hibernate Reactive with the
@@ -63,8 +58,16 @@ public class Main {
 					.toCompletableFuture().join();
 
 
+			final String queryString = "select * from authors";
 			final ResultSet join = service.getConnection()
-					.thenCompose( c -> c.selectJdbc( "select * from authors", new Object[0] ) )
+					.thenCompose( c -> c.selectJdbc( queryString, new Object[0] ) )
+					.handle( (resultSet, err) -> {
+						CompletionStages.logSqlException(
+								err,
+								() -> "could not execute query ", queryString
+						);
+						return CompletionStages.returnOrRethrow( err, resultSet );
+					})
 					.toCompletableFuture()
 					.join();
 
