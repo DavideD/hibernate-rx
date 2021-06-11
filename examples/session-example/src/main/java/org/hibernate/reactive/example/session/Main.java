@@ -1,10 +1,16 @@
 package org.hibernate.reactive.example.session;
 
+import javax.persistence.EntityManagerFactory;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Join;
 import javax.persistence.criteria.Root;
 
+import java.sql.ResultSet;
 import java.time.LocalDate;
+
+import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.reactive.pool.ReactiveConnectionPool;
+import org.hibernate.reactive.stage.Stage;
 
 import static java.lang.System.out;
 import static java.time.Month.JANUARY;
@@ -29,9 +35,13 @@ public class Main {
 		// obtain a factory for reactive sessions based on the
 		// standard JPA configuration properties specified in
 		// resources/META-INF/persistence.xml
-		SessionFactory factory =
-				createEntityManagerFactory( persistenceUnitName( args ) )
-						.unwrap(SessionFactory.class);
+		EntityManagerFactory emFactory = createEntityManagerFactory( persistenceUnitName( args ) );
+
+		final ReactiveConnectionPool service = emFactory.unwrap( SessionFactoryImplementor.class )
+				.getServiceRegistry()
+				.getService( ReactiveConnectionPool.class );
+
+		Stage.SessionFactory factory = emFactory.unwrap( Stage.SessionFactory.class );
 
 		// define some test data
 		Author author1 = new Author("Iain M. Banks");
@@ -52,111 +62,13 @@ public class Main {
 					// wait for it to finish
 					.toCompletableFuture().join();
 
-			factory.withSession(
-					// retrieve a Book
-					session -> session.find( Book.class, book1.getId() )
-							// print its title
-							.thenAccept( book -> out.println( book.getTitle() + " is a great book!" ) )
-			)
-					.toCompletableFuture().join();
 
-			factory.withSession(
-					// retrieve both Authors at once
-					session -> session.find( Author.class, author1.getId(), author2.getId() )
-							.thenAccept( authors -> authors.forEach( author -> out.println( author.getName() ) ) )
-			)
-					.toCompletableFuture().join();
+			final ResultSet join = service.getConnection()
+					.thenCompose( c -> c.selectJdbc( "select * from authors", new Object[0] ) )
+					.toCompletableFuture()
+					.join();
 
-			factory.withSession(
-					// retrieve an Author
-					session -> session.find( Author.class, author2.getId() )
-							// lazily fetch their books
-							.thenCompose( author -> fetch( author.getBooks() )
-									// print some info
-									.thenAccept( books -> {
-										out.println( author.getName() + " wrote " + books.size() + " books" );
-										books.forEach( book -> out.println( book.getTitle() ) );
-									} )
-							)
-			)
-					.toCompletableFuture().join();
-
-			factory.withSession(
-					// query the Book titles
-					session -> session.createQuery(
-							"select title, author.name from Book order by title desc",
-							Object[].class
-					)
-							.getResultList()
-							.thenAccept( rows -> rows.forEach(
-									row -> out.printf( "%s (%s)\n", row[0], row[1] )
-							) )
-			)
-					.toCompletableFuture().join();
-
-			factory.withSession(
-					// query the entire Book entities
-					session -> session.createQuery(
-							"from Book book join fetch book.author order by book.title desc",
-							Book.class
-					)
-							.getResultList()
-							.thenAccept( books -> books.forEach(
-									b -> out.printf(
-											"%s: %s (%s)\n",
-											b.getIsbn(),
-											b.getTitle(),
-											b.getAuthor().getName()
-									)
-							) )
-			)
-					.toCompletableFuture().join();
-
-			factory.withSession(
-					// use a criteria query
-					session -> {
-						CriteriaQuery<Book> query = factory.getCriteriaBuilder().createQuery( Book.class );
-						Root<Author> a = query.from( Author.class );
-						Join<Author, Book> b = a.join( Author_.books );
-						query.where( a.get( Author_.name ).in( "Neal Stephenson", "William Gibson" ) );
-						query.select( b );
-						return session.createQuery( query ).getResultList().thenAccept(
-								books -> books.forEach( book -> out.println( book.getTitle() ) )
-						);
-					}
-			)
-					.toCompletableFuture().join();
-
-			factory.withSession(
-					// retrieve a Book
-					session -> session.find( Book.class, book1.getId() )
-							// fetch a lazy field of the Book
-							.thenCompose( book -> session.fetch( book, Book_.published )
-									// print the lazy field
-									.thenAccept( published -> out.printf(
-											"'%s' was published in %d\n",
-											book.getTitle(),
-											published.getYear()
-									) )
-							)
-			)
-					.toCompletableFuture().join();
-
-			factory.withTransaction(
-					// retrieve a Book
-					(session, tx) -> session.find( Book.class, book2.getId() )
-							// delete the Book
-							.thenCompose( session::remove )
-			)
-					.toCompletableFuture().join();
-
-			factory.withTransaction(
-					// delete all the Books in a transaction
-					(session, tx) -> session.createQuery( "delete Book" ).executeUpdate()
-							// delete all the Authors
-							.thenCompose( $ -> session.createQuery( "delete Author" ).executeUpdate() )
-			)
-					.toCompletableFuture().join();
+			out.println(join);
 		}
 		finally {
 			// remember to shut down the factory
